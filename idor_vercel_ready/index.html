@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DOOMBOT REGISTRY</title>
+  <style>
+    body{background:#020805;color:#b8ffd5;font:14px monospace;max-width:900px;margin:50px auto;padding:20px}
+    h1{color:#00ff88}
+    .box{border:1px solid #064b25;padding:18px;margin:15px 0;background:#03130a}
+    button{background:#00ff88;border:0;padding:10px 14px;font:inherit;cursor:pointer}
+    .small{color:#6abf8d}
+    pre{white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <h1>DOOMBOT REGISTRY // UNIT VIEWER</h1>
+  <div class="box">
+    <div class="small">ASSIGNED UNIT</div>
+    <h2>DOOMBOT-ASTER / 1001</h2>
+    <p>The terminal is scoped to your assigned unit. Telemetry is loaded from the registry API.</p>
+    <button onclick="load()">FETCH TELEMETRY</button>
+    <pre id="o"></pre>
+  </div>
+  <div class="box small">
+    Hint from ops: the visible interface is not the only client talking to the registry.
+    Inspect the request sent when telemetry loads.
+  </div>
+  <script>
+    async function load(){
+      const r = await fetch('/api/bots/1001');
+      document.getElementById('o').textContent = await r.text();
+    }
+  </script>
+</body>
+</html>
