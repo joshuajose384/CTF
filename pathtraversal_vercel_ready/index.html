@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OMEGA ARCHIVE</title>
+  <style>
+    body{background:#020805;color:#b8ffd5;font:15px monospace;max-width:850px;margin:55px auto;padding:20px}
+    h1{color:#00ff88;letter-spacing:2px}
+    .box{border:1px solid #075c2c;background:#03130a;padding:20px;margin:18px 0;box-shadow:0 0 18px #001f10}
+    a{color:#00ff88;text-decoration:none}
+    a:hover{text-decoration:underline}
+    .muted{color:#76a98a;font-size:12px}
+    .warn{color:#c0e8cc}
+  </style>
+</head>
+<body>
+  <h1>OMEGA ARCHIVE // FILE VIEWER</h1>
+  <div class="box">
+    <div class="muted">ROOT: /srv/archive/public</div>
+    <p><a href="/view?file=manifest.txt">manifest.txt</a></p>
+    <p><a href="/view?file=telemetry.txt">telemetry.txt</a></p>
+  </div>
+  <div class="box">
+    <div class="warn">PUBLIC-SECTOR VIEWER</div>
+    <p class="muted">The URL names the artifact the viewer attempts to read.</p>
+  </div>
+</body>
+</html>
