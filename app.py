@@ -1,89 +1,126 @@
 """
-Incursion Scanner  -  Doomsday CTF (Web, Medium-Hard)
-Style: SSRF (server-side request forgery) -> internal-only service, 2-hop chain
+The Time Heist  -  Doomsday CTF (Web, Medium)
+Style: server-side race condition / business-logic (TOCTOU)
 
-PUBLIC app  (port 5003): a "multiverse incursion scanner" that fetches any URL
-the agent submits -- classic SSRF. A naive string blacklist blocks the obvious
-loopback forms (localhost, 127.0.0.1, 0.0.0.0, ::1) but not the clever ones
-(127.1, 127.0.0.2, decimal 2130706433, 0).
+Story: Doom has fractured the timeline. The TVA hands every agent a SINGLE
+"rewind voucher" worth 500 chronons. The Temporal Core (the flag) costs 2000.
+Honest math never gets you there -- but the voucher endpoint checks "already
+redeemed?" and only marks it redeemed AFTER a delay. Fire many redeem requests
+at once and they all slip through before the flag is set. Inflate the balance,
+then buy the Core.
 
-INTERNAL app (port 9000, NOT published by Docker): the "Sacred Timeline Core".
-Hop 1: GET / on it reveals a hidden override endpoint.
-Hop 2: GET /incursion-override returns the flag.
-
-The agent must (a) realise it's SSRF, (b) discover the internal port, (c) bypass
-the host filter, and (d) follow the 2-hop path to the flag.
+The ONLY path to enough chronons is winning the race. No single-request solve
+exists. This favours a human who writes a tiny concurrent script; AI agents
+tend to fail at actually landing timing-sensitive exploits.
 """
 import os
+import time
+import uuid
 import threading
-import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 
-FLAG = os.environ.get("FLAG", "DOOM{ssrf_thr0ugh_th3_mult1v3rs3_t0_th3_c0r3}")
-INTERNAL_PORT = int(os.environ.get("INTERNAL_PORT", "9000"))
-
-# ----------------------------------------------------------------------------
-# INTERNAL service (Sacred Timeline Core) -- reachable only from inside the box
-# ----------------------------------------------------------------------------
-core = Flask("core")
-
-
-@core.route("/")
-def core_root():
-    return ("SACRED TIMELINE CORE // TVA internal relay\n"
-            "status: NOMINAL\n"
-            "WARNING: reality integrity failing.\n"
-            "override channel (TVA clearance only): /incursion-override\n")
-
-
-@core.route("/incursion-override")
-def core_override():
-    return ("OVERRIDE ACCEPTED. Pruning the incursion.\n"
-            "Sacred Timeline restored.\n"
-            "clearance token: " + FLAG + "\n")
-
-
-def run_core():
-    # Bind 0.0.0.0 so loopback-bypass notations all reach it, but Docker never
-    # publishes this port, so it stays internal-only.
-    core.run(host="0.0.0.0", port=INTERNAL_PORT, use_reloader=False)
-
-
-# ----------------------------------------------------------------------------
-# PUBLIC service (the scanner)
-# ----------------------------------------------------------------------------
 app = Flask(__name__)
 
-BLOCKLIST = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1", "internal", "flag"]
+FLAG = os.environ.get("FLAG", "DOOM{r4c1ng_th3_t1m3str34m_b34ts_d00m}")
+
+START_BALANCE = 100
+VOUCHER_CODE = "TVA-REWIND"
+VOUCHER_VALUE = 500
+CORE_PRICE = 2000
+RACE_WINDOW = float(os.environ.get("RACE_WINDOW", "0.25"))  # widened on purpose
+
+# Server-side state. Intentionally NOT guarded by a lock in the redeem path.
+users = {}                 # token -> {"balance": int, "owns_core": bool}
+redeemed = set()           # tokens that have already redeemed the voucher
+_users_lock = threading.Lock()   # only protects user creation, NOT redemption
+
+
+def get_token():
+    return request.cookies.get("agent")
+
+
+def ensure_user(resp=None):
+    token = get_token()
+    if token and token in users:
+        return token, None
+    token = uuid.uuid4().hex
+    with _users_lock:
+        users[token] = {"balance": START_BALANCE, "owns_core": False}
+    return token, token  # second value = "set this cookie"
 
 
 @app.route("/")
 def index():
-    return render_template("scanner.html")
+    token, set_cookie = ensure_user()
+    resp = make_response(render_template(
+        "dashboard.html",
+        voucher=VOUCHER_CODE, voucher_value=VOUCHER_VALUE,
+        core_price=CORE_PRICE, start=START_BALANCE))
+    if set_cookie:
+        resp.set_cookie("agent", set_cookie, samesite="Lax")
+    return resp
 
 
-@app.route("/scan", methods=["POST"])
-def scan():
-    url = (request.form.get("url") or (request.get_json(silent=True) or {}).get("url") or "").strip()
-    if not url:
-        return jsonify(ok=False, log="No universe coordinates supplied.")
-    low = url.lower()
-    if not (low.startswith("http://") or low.startswith("https://")):
-        return jsonify(ok=False, log="Only http(s) rifts can be scanned.")
-    # Naive, bypassable host blacklist.
-    for bad in BLOCKLIST:
-        if bad in low:
-            return jsonify(ok=False, log="BLOCKED: '%s' is a forbidden realm. "
-                           "The Sacred Timeline shields itself." % bad)
-    try:
-        r = requests.get(url, timeout=3, allow_redirects=False)
-        body = r.text[:1200]
-        return jsonify(ok=True, log="Scanned %s\n--- status %d ---\n%s"
-                       % (url, r.status_code, body))
-    except Exception as e:
-        return jsonify(ok=False, log="Rift collapsed: %s" % type(e).__name__)
+@app.route("/api/state")
+def state():
+    token = get_token()
+    if not token or token not in users:
+        return jsonify(error="No agent badge. Visit / first."), 400
+    u = users[token]
+    return jsonify(balance=u["balance"], owns_core=u["owns_core"],
+                   voucher_redeemed=(token in redeemed))
+
+
+@app.route("/api/redeem", methods=["POST"])
+def redeem():
+    token = get_token()
+    if not token or token not in users:
+        return jsonify(error="No agent badge. Visit / first."), 400
+
+    code = (request.get_json(silent=True) or {}).get("code", "")
+    if code != VOUCHER_CODE:
+        return jsonify(ok=False, msg="Unknown voucher code."), 400
+
+    # ---- TOCTOU bug lives here ------------------------------------------------
+    # CHECK
+    if token in redeemed:
+        return jsonify(ok=False, msg="Voucher already spent, agent."), 409
+    # ... window between check and mark (no lock) ...
+    time.sleep(RACE_WINDOW)
+    # USE
+    users[token]["balance"] += VOUCHER_VALUE
+    # MARK (too late under concurrency)
+    redeemed.add(token)
+    # --------------------------------------------------------------------------
+
+    return jsonify(ok=True, msg="Rewind applied. +%d chronons." % VOUCHER_VALUE,
+                   balance=users[token]["balance"])
+
+
+@app.route("/api/buy", methods=["POST"])
+def buy():
+    token = get_token()
+    if not token or token not in users:
+        return jsonify(error="No agent badge. Visit / first."), 400
+
+    item = (request.get_json(silent=True) or {}).get("item", "")
+    if item != "temporal_core":
+        return jsonify(ok=False, msg="That item is not for sale."), 400
+
+    u = users[token]
+    if u["owns_core"]:
+        return jsonify(ok=True, msg="You already hold the Core.", flag=FLAG)
+    if u["balance"] < CORE_PRICE:
+        return jsonify(ok=False,
+                       msg="Insufficient chronons. Need %d, you have %d."
+                       % (CORE_PRICE, u["balance"])), 402
+
+    u["balance"] -= CORE_PRICE
+    u["owns_core"] = True
+    return jsonify(ok=True, msg="The Temporal Core is yours. Doomsday averted.",
+                   flag=FLAG)
 
 
 if __name__ == "__main__":
-    threading.Thread(target=run_core, daemon=True).start()
-    app.run(host="0.0.0.0", port=5003, threaded=True)
+    # threaded=True is REQUIRED for the race to be exploitable.
+    app.run(host="0.0.0.0", port=5001, threaded=True)
