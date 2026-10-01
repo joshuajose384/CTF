@@ -1,0 +1,41 @@
+:root{
+  --gold:#c9a227; --gold-2:#8a6d1b; --bg:#0c0a07; --panel:#141009; --ink:#e8dcc0;
+  --green:#49d17a; --red:#e2554a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:radial-gradient(1200px 700px at 50% -10%, #241a0a 0%, var(--bg) 60%);
+  color:var(--ink);
+  font-family:"Courier New",monospace;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.scanlines{position:fixed;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.18) 2px 3px);
+  mix-blend-mode:multiply;z-index:5}
+.panel{
+  width:100%;max-width:560px;background:linear-gradient(180deg,#171208,#0f0b06);
+  border:1px solid var(--gold-2);border-radius:14px;padding:30px 28px 20px;
+  box-shadow:0 0 0 1px rgba(201,162,39,.12),0 30px 80px rgba(0,0,0,.6);
+  text-align:center;position:relative;z-index:1}
+.sigil img{width:140px;height:140px;object-fit:cover;border-radius:50%;
+  border:2px solid var(--gold);filter:drop-shadow(0 0 18px rgba(201,162,39,.35))}
+h1{letter-spacing:6px;margin:14px 0 4px;color:var(--gold);
+  text-shadow:0 0 14px rgba(201,162,39,.4)}
+.sub{letter-spacing:3px;font-size:11px;color:#9a8a63;margin:0 0 18px}
+.lore{font-size:13px;line-height:1.6;text-align:left;color:#cbbd97;
+  background:rgba(0,0,0,.25);border-left:3px solid var(--gold-2);padding:12px 14px;border-radius:6px}
+.lore em{color:var(--gold);font-style:normal}
+.hint{color:#8fae8f}
+.form{display:flex;gap:8px;margin:18px 0 10px}
+#key{flex:1;padding:12px 14px;background:#0a0804;border:1px solid var(--gold-2);
+  color:var(--ink);border-radius:8px;letter-spacing:2px;outline:none}
+#key:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,162,39,.2)}
+#submit{padding:12px 18px;background:linear-gradient(180deg,var(--gold),var(--gold-2));
+  border:0;border-radius:8px;color:#1a1304;font-weight:bold;letter-spacing:2px;cursor:pointer}
+#submit:hover{filter:brightness(1.1)}
+.result{min-height:22px;font-size:13px;margin-top:6px;word-break:break-word}
+.result.ok{color:var(--green)}
+.result.err{color:var(--red)}
+.footer{font-size:10px;color:#6e6042;margin-top:16px;letter-spacing:1px}
+.footer a{color:#9a8a63}
