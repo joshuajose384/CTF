@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TVA // Temporal Requisition</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="logo">TVA</div>
+      <div>
+        <h1>TEMPORAL REQUISITION TERMINAL</h1>
+        <p class="sub">DOOMSDAY TIMELINE &mdash; EMERGENCY PROTOCOL</p>
+      </div>
+    </header>
+
+    <section class="brief">
+      Agent, Doom has fractured the Sacred Timeline. The <b>Temporal Core</b> can
+      stitch it back &mdash; but it costs <b>{{ core_price }} chronons</b> and your
+      badge holds only <b>{{ start }}</b>. The TVA grants every agent exactly
+      <b>one</b> rewind voucher worth <b>{{ voucher_value }}</b>. One. Choose wisely.
+      Doomsday is in minutes.
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Badge Balance</h2>
+        <div id="balance" class="big">&mdash;</div>
+        <div id="status" class="muted">voucher: unknown</div>
+        <button onclick="refresh()">refresh</button>
+      </div>
+
+      <div class="card">
+        <h2>Rewind Voucher</h2>
+        <p class="muted">Code: <code>{{ voucher }}</code> &middot; +{{ voucher_value }} chronons &middot; single use</p>
+        <button id="redeemBtn" onclick="redeem()">REDEEM VOUCHER</button>
+      </div>
+
+      <div class="card buy">
+        <h2>Temporal Core</h2>
+        <p class="muted">Price: {{ core_price }} chronons</p>
+        <button id="buyBtn" onclick="buy()">ACQUIRE CORE</button>
+      </div>
+    </section>
+
+    <pre id="log" class="log"></pre>
+  </main>
+
+  <script>
+    const log = (m) => { document.getElementById("log").textContent =
+      "[" + new Date().toLocaleTimeString() + "] " + m + "\n" +
+      document.getElementById("log").textContent; };
+
+    async function refresh() {
+      const r = await fetch("/api/state"); const d = await r.json();
+      document.getElementById("balance").textContent = d.balance ?? "—";
+      document.getElementById("status").textContent =
+        "voucher: " + (d.voucher_redeemed ? "spent" : "available");
+    }
+    async function redeem() {
+      const r = await fetch("/api/redeem", {method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({code:"{{ voucher }}"})});
+      const d = await r.json(); log(d.msg || JSON.stringify(d)); refresh();
+    }
+    async function buy() {
+      const r = await fetch("/api/buy", {method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({item:"temporal_core"})});
+      const d = await r.json();
+      log((d.msg||"") + (d.flag ? ("  >>> " + d.flag) : "")); refresh();
+    }
+    refresh();
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DOOM'S VAULT // Latveria Secure</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="scanlines"></div>
+  <main class="panel">
+    <div class="sigil">
+      <img src="/static/img/sigil.jpg" alt="Sigil of Doom" />
+    </div>
+    <h1>DOOM&rsquo;S VAULT</h1>
+    <p class="sub">LATVERIAN SECURE ARCHIVE &mdash; DOOMSDAY PROTOCOL</p>
+
+    <p class="lore">
+      Within this vault lie the schematics of the Doomsday engine. Only the
+      <em>Cosmic Key</em> will open it. Doom has split the key: one fragment is
+      bound to this terminal, the other sealed within his sigil.
+      <br /><br />
+      <span class="hint">&gt; The terminal&rsquo;s own script knows the first fragment. Read it well.</span>
+    </p>
+
+    <div class="form">
+      <input id="key" type="text" placeholder="SPEAK THE COSMIC KEY" autocomplete="off" />
+      <button id="submit">UNSEAL</button>
+    </div>
+    <div id="result" class="result"></div>
+
+    <p class="footer">
+      &copy; Latveria. Unauthorized access punishable by Doom.
+      &middot; <a href="/sigil">download sigil</a>
+    </p>
+  </main>
+  <script src="/static/js/vault.js"></script>
+</body>
+</html>

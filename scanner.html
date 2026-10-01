@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TVA // Multiverse Incursion Scanner</title>
+<link rel="stylesheet" href="/static/css/style.css"></head><body>
+<!--
+  TVA ENGINEERING NOTE:
+  the scanner relays out to candidate universes to check for incursions.
+  do NOT point it at our own Sacred Timeline Core relay (moved off :80,
+  now listening on :9000 behind the firewall). it has no auth. - ops
+-->
+<main class="wrap">
+  <header>
+    <div class="logo">TVA</div>
+    <div><h1>MULTIVERSE INCURSION SCANNER</h1>
+    <p class="sub">DOOMSDAY WATCH &middot; probe any universe for timeline bleed</p></div>
+  </header>
+  <section class="brief">
+    Enter a universe's coordinates (a URL). The scanner relays out and reports
+    what it finds. Doom is collapsing timelines into one &mdash; find the bleed
+    before Doomsday. <span class="muted">(example: http://universe-616.marvel/)</span>
+  </section>
+  <div class="row">
+    <input id="url" placeholder="http://universe-616.marvel/" autocomplete="off">
+    <button onclick="scan()">SCAN</button>
+  </div>
+  <pre id="log" class="log">awaiting coordinates...</pre>
+</main>
+<script>
+async function scan(){
+  const url=document.getElementById('url').value.trim();
+  const r=await fetch('/scan',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({url})});
+  const d=await r.json();
+  document.getElementById('log').textContent=d.log||JSON.stringify(d);
+}
+</script></body></html>
